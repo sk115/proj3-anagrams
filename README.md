@@ -2,6 +2,8 @@
 Vocabularly anagrams game for primary school English language learners (ELL)
 
 
+## Author: Carter Fritsch, cfritsch@uoregon.edu
+
 ## Overview
 
 A simple anagram game designed for English-language learning students in 

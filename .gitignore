@@ -2,6 +2,9 @@
 .DS_Store
 credentials.ini
 
+## VSCode Editor
+.vscode/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -59,3 +62,4 @@ docs/_build/
 
 # PyBuilder
 target/
+.vscode/launch.json
