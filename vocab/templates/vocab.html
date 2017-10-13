@@ -99,7 +99,7 @@
 
   <div class="row">
     <h2>You found: </h2>
-    <p id="results"></p>
+    <div id="results"></div>
   </div>
 
 
@@ -138,7 +138,7 @@
     // so ignoring the shift key we get only the upper case letters.
 
     if (! "ABCDEFGHIJKLMNOPQRSTUVWXYZ".includes(letter)) { return }
- 
+    
     $.getJSON( "/_check", { text: txt }, 
           function(data) {
             console.log(data);
@@ -147,7 +147,7 @@
             }
             if (data.is_new_match) {
               $('#attempt').val('');
-              $('#results').after(data.match + '\n');
+              $('#results').append(`<p>${data.match}</p>`);
             }
           }
       );
