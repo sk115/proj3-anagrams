@@ -48,70 +48,111 @@
       <h1>Words</h1>
     </div>
   </div>
-<!-- Vocabularly words layed out in 6 columns;
+
+  <!-- Vocabularly words layed out in 6 columns;
   -- bootstrap may collapse to fewer columns and
-  -- more rows if the window is narrow.
+  -- more rows if the window is narrow. 
   -->
-<div class="row">
-  {% for word in g.vocab %}
-    <div class="col-xs-2 text-center"> {{ word }} </div>
-    {% if loop.index is divisibleby 3 %}
-    </div> <!-- row -->
-    <div class="row">
-    {% endif %}
-  {% endfor %}
-</div> <!-- row -->
 
-<br />
-
-<div class="row">
-  <div class="col-xs-6 text-center">
-   Use letters from
-  </div>
-  </div><div class="row">
-  <div class="col-xs-6 text-center lead">
-    <strong>{{ session.jumble }}</strong>
-  </div>
-  </div><div class="row">
-  <div class="col-xs-6 text-center">
-    to spell {{session.target_count}} words from the list.
-  </div> <!-- col -->
-</div> <!-- row -->
-<br />
-<div class="row">
-  <div class="col-xs-6 text-center">
-  <form id="entry" method="POST" action="/_check">
-    <label for="attempt">Word:</label>
-    <input id="attempt" name="attempt" type="text" width="15"
-      autocomplete="off"  autofocus />
-    <input type="submit" name="try" />
-  </form>
-</div></div>
-
-<br />
-
-{% if session.matches|length is not equalto 0  %}
-<h2>You found </h2>
-<p id="results">
-  {% for match in session.matches %}
-  {{ match }} 
-  {% endfor %}
-</p>
-{% endif %}
-
-
-{% with messages = get_flashed_messages() %}
-  {% if messages %}
-    <!-- Mismatch, already found, etc. "flashed" from Python -->
-    {% for message in messages %}
-      <p class="message">{{ message }}</p>
+  <div class="row">
+    {% for word in g.vocab %}
+      <div class="col-xs-2 text-center"> {{ word }} </div>
+      {% if loop.index is divisibleby 3 %}
+        </div> <!-- row -->
+        <div class="row">
+      {% endif %}
     {% endfor %}
-  {% endif %}
-{% endwith %}
+  </div> <!-- row -->
+
+  <br />
+
+  <div class="row">
+    <div class="col-xs-6 text-center">
+    Use letters from
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-xs-6 text-center lead">
+      <strong>{{ session.jumble }}</strong>
+    </div>
+  </div>
+  
+  <div class="row">
+    <div class="col-xs-6 text-center">
+      to spell {{session.target_count}} words from the list.
+    </div> <!-- col -->
+  </div> <!-- row -->
+
+  <br />
+  
+  <div class="row">
+    <div class="col-xs-6 text-center">
+      <form id="entry">
+        <label for="attempt">Word:</label>
+        <input id="attempt" name="attempt" type="text" width="20" autocomplete="off"  autofocus />
+      </form>
+    </div>
+  </div>
+
+  <br />
+
+  <div class="row">
+    <h2>You found: </h2>
+    <p id="results"></p>
+  </div>
+
+
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      <!-- Mismatch, already found, etc. "flashed" from Python -->
+      {% for message in messages %}
+        <p class="message">{{ message }}</p>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+
+</div> <!-- container -->
 
 <script>
   // #TODO
+  // Suppress normal form submission
+
+  $("#entry").submit( function(event) {
+    event.preventDefault();
+  });
+
+  var last_attempt = '';
+  $("#attempt").keyup(function(event) {
+    var txt = event.target.value;  // Current content of the input field
+    if (txt === last_attempt) {return}
+    last_attempt = txt;
+    var keycode = event.which;      // They key that just went up
+    var letter = String.fromCharCode(keycode);
+ 
+    // That letter might not be a letter ... it could be the
+    // the backspace key, or even the shift key, because 'keyup'
+    // catches all kinds of keys.  (Also, the difference between
+    // upper and lower case comes from state of shift key + key code,
+    // so ignoring the shift key we get only the upper case letters.
+
+    if (! "ABCDEFGHIJKLMNOPQRSTUVWXYZ".includes(letter)) { return }
+ 
+    $.getJSON( "/_check", { text: txt }, 
+          function(data) {
+            console.log(data);
+            if (data.success) {
+              window.location.replace('/success');
+            }
+            if (data.is_new_match) {
+              $('#attempt').val('');
+              $('#results').after(data.match + '\n');
+            }
+          }
+      );
+    });
 </script>
 
- </div> <!-- container -->
-</body> </html>
+</body>
+</html>

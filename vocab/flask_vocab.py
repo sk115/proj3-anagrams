@@ -21,7 +21,6 @@ app = flask.Flask(__name__)
 CONFIG = config.configuration()
 app.secret_key = CONFIG.SECRET_KEY  # Should allow using session variables
 
-#
 # One shared 'Vocab' object, read-only after initialization,
 # shared by all threads and instances.  Otherwise we would have to
 # store it in the browser and transmit it on each request/response cycle,
@@ -38,7 +37,11 @@ WORDS = Vocab(CONFIG.VOCAB)
 @app.route("/")
 @app.route("/index")
 def index():
-    """The main page of the application"""
+    """
+    The main page of the application
+    Get the global wordlist and set session
+    variables, then render the page appropriately
+    """
     flask.g.vocab = WORDS.as_list()
     flask.session["target_count"] = min(
         len(flask.g.vocab), CONFIG.SUCCESS_AT_COUNT)
@@ -51,47 +54,26 @@ def index():
     app.logger.debug("At least one seems to be set correctly")
     return flask.render_template('vocab.html')
 
-
-@app.route("/keep_going")
-def keep_going():
-    """
-    After initial use of index, we keep the same scrambled
-    word and try to get more matches
-    """
-    flask.g.vocab = WORDS.as_list()
-    return flask.render_template('vocab.html')
-
-
-@app.route("/success")
-def success():
-    return flask.render_template('success.html')
-
-#######################
-# Form handler.
-# CIS 322 note:
-#   You'll need to change this to a
-#   a JSON request handler
-#######################
-
-
-@app.route("/_check", methods=["POST"])
+@app.route("/_check")
 def check():
     """
-    User has submitted the form with a word ('attempt')
-    that should be formed from the jumble and on the
-    vocabulary list.  We respond depending on whether
-    the word is on the vocab list (therefore correctly spelled),
-    made only from the jumble letters, and not a word they
-    already found.
+    User has typed text into the attempt input field
+    which sends the text as an AJAX Request
+    We evaluate if the text is a word that can be
+    formed from the jumble and is on the vocabulary list,
+    and if so respond with a flag indicating the new entry
+    If we have enough matches to win, we skip to
+    sending a flag to redirect to the success page
     """
-    app.logger.debug("Entering check")
 
-    # The data we need, from form and from cookie
-    text = flask.request.form["attempt"]
+    app.logger.debug("Received Entry")
+
+    # Receive input to test via AJAX Request
+    text = flask.request.args.get("text", type=str)
     jumble = flask.session["jumble"]
     matches = flask.session.get("matches", [])  # Default to empty list
+    is_new_match = False # Assume it's not new
 
-    # Is it good?
     in_jumble = LetterBag(jumble).contains(text)
     matched = WORDS.has(text)
 
@@ -100,51 +82,31 @@ def check():
         # Cool, they found a new word
         matches.append(text)
         flask.session["matches"] = matches
-    elif text in matches:
-        flask.flash("You already found {}".format(text))
-    elif not matched:
-        flask.flash("{} isn't in the list of words".format(text))
-    elif not in_jumble:
-        flask.flash(
-            '"{}" can\'t be made from the letters {}'.format(text, jumble))
-    else:
-        app.logger.debug("This case shouldn't happen!")
-        assert False  # Raises AssertionError
+        is_new_match = True
 
-    # Choose page:  Solved enough, or keep going?
+    # Other Cases
+    # elif text in matches:
+    #   already found this word
+    # elif not matched:
+    #   word not in our list
+    # elif not in_jumble:
+    #     has letters not in the letterbag
+    # else:
+    #     app.logger.debug("This case shouldn't happen!")
+    #     assert False  # Raises AssertionError
+
+    # Flag for redirect if complete, return matched text otherwise
     if len(matches) >= flask.session["target_count"]:
-       return flask.redirect(flask.url_for("success"))
+        return flask.jsonify(success=True)
     else:
-       return flask.redirect(flask.url_for("keep_going"))
+        return flask.jsonify(match=text, is_new_match=is_new_match, success=False)
 
-###############
-# AJAX request handlers
-#   These return JSON, rather than rendering pages.
-###############
+@app.route("/success")
+def success():
+    """Redirect Page for Game Completion"""
+    return flask.render_template('success.html')
 
-#TODO
-
-@app.route("/_example")
-def example():
-    """
-    Example ajax request handler
-    """
-    app.logger.debug("Got a JSON request")
-    rslt = {"key": "value"}
-    return flask.jsonify(result=rslt)
-
-
-#################
-# Functions used within the templates
-#################
-
-@app.template_filter('filt')
-def format_filt(something):
-    """
-    Example of a filter that can be used within
-    the Jinja2 code
-    """
-    return "Not what you asked for"
+###
 
 ###################
 #   Error handlers
@@ -176,6 +138,5 @@ if __name__ == "__main__":
     if CONFIG.DEBUG:
         app.debug = True
         app.logger.setLevel(logging.DEBUG)
-        app.logger.info(
-            "Opening for global access on port {}".format(CONFIG.PORT))
-        app.run(port=CONFIG.PORT, host="0.0.0.0")
+    app.logger.info("Opening for global access on port {}".format(CONFIG.PORT))
+    app.run(port=CONFIG.PORT, host="0.0.0.0")
